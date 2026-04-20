@@ -1,0 +1,51 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "pi4-debug",
+      "displayName": "Raspberry Pi 4 (aarch64) - Debug",
+      "description": "Cross-compile from Windows for 64-bit Raspberry Pi OS on Pi 4.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "toolchainFile": "${sourceDir}/cmake/aarch64-rpi-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
+          "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}",
+          "copySourcesOptions": {
+            "exclusionList": [ ".vs", "out", ".git", ".gitignore", "CMakeUserPresets.json" ]
+          }
+        },
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "intelliSenseMode": "linux-gcc-arm"
+        }
+      }
+    },
+    {
+      "name": "pi4-release",
+      "inherits": "pi4-debug",
+      "displayName": "Raspberry Pi 4 (aarch64) - Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "pi4-debug",
+      "configurePreset": "pi4-debug"
+    },
+    {
+      "name": "pi4-release",
+      "configurePreset": "pi4-release"
+    }
+  ]
+}

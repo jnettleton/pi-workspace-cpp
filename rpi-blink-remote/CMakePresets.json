@@ -1,0 +1,50 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "pi4-debug-remote",
+      "displayName": "Raspberry Pi 4 - Remote Build (Debug)",
+      "description": "Copy sources to the Pi via SSH and build there with its native g++.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
+          "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}",
+          "copySourcesOptions": {
+            "exclusionList": [ ".vs", "out", ".git", ".gitignore", "CMakeUserPresets.json" ]
+          }
+        },
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "intelliSenseMode": "linux-gcc-arm64"
+        }
+      }
+    },
+    {
+      "name": "pi4-release-remote",
+      "inherits": "pi4-debug-remote",
+      "displayName": "Raspberry Pi 4 - Remote Build (Release)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "pi4-debug-remote",
+      "configurePreset": "pi4-debug-remote"
+    },
+    {
+      "name": "pi4-release-remote",
+      "configurePreset": "pi4-release-remote"
+    }
+  ]
+}
