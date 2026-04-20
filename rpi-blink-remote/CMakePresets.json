@@ -24,7 +24,7 @@
           }
         },
         "microsoft.com/VisualStudioSettings/CMake/1.0": {
-          "intelliSenseMode": "linux-gcc-arm64"
+          "intelliSenseMode": "linux-gcc-arm"
         }
       }
     },

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(rpi_blink CXX)
+project(rpi_blink_remote CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,15 +11,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(GPIOD REQUIRED IMPORTED_TARGET libgpiodcxx)
 
-add_executable(rpi_blink src/main.cpp)
-target_link_libraries(rpi_blink PRIVATE PkgConfig::GPIOD)
+add_executable(rpi_blink_remote src/main.cpp)
+target_link_libraries(rpi_blink_remote PRIVATE PkgConfig::GPIOD)
 
 # Warnings on; they catch a lot on embedded targets.
 if (CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
-    target_compile_options(rpi_blink PRIVATE -Wall -Wextra -Wpedantic)
+    target_compile_options(rpi_blink_remote PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
 # Put the binary somewhere predictable so VS's deploy step can find it.
-set_target_properties(rpi_blink PROPERTIES
+set_target_properties(rpi_blink_remote PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
 )
