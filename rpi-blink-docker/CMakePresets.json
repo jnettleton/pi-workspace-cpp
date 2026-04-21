@@ -1,0 +1,39 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "pi4-debug",
+      "displayName": "Pi 4 Cross-Compile (Debug, in Docker)",
+      "description": "Run inside the rpi-xc container; produces an aarch64 ELF.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "${sourceDir}/cmake/aarch64-docker-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "pi4-release",
+      "inherits": "pi4-debug",
+      "displayName": "Pi 4 Cross-Compile (Release, in Docker)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "pi4-debug",
+      "configurePreset": "pi4-debug"
+    },
+    {
+      "name": "pi4-release",
+      "configurePreset": "pi4-release"
+    }
+  ]
+}
