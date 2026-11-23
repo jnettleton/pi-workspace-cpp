@@ -1,0 +1,5 @@
+out/
+build/
+
+# Touch calibration for this particular panel (see src/calibrate.cpp)
+touch_calibration.txt

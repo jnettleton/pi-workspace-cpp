@@ -1,0 +1,91 @@
+{
+  "version": 4,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 23,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "pi4-debug-remote",
+      "displayName": "Raspberry Pi 4 - Remote Build (Debug)",
+      "description": "Copy sources to the Pi via SSH and build there with its native g++.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioRemoteSettings/CMake/1.0": {
+          "sourceDir": "$env{HOME}/.vs/$ms{projectDirName}",
+          "copySourcesOptions": {
+            "exclusionList": [ ".vs", "out", ".git", ".gitignore", "CMakeUserPresets.json" ]
+          }
+        },
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "intelliSenseMode": "linux-gcc-arm"
+        }
+      }
+    },
+    {
+      "name": "pi4-release-remote",
+      "inherits": "pi4-debug-remote",
+      "displayName": "Raspberry Pi 4 - Remote Build (Release)",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "pi4-debug",
+      "displayName": "Raspberry Pi 4 (aarch64) - Cross Debug",
+      "description": "Cross-compile from Windows for 64-bit Raspberry Pi OS. Needs RPI_TOOLCHAIN_ROOT and RPI_SYSROOT (set them in CMakeUserPresets.json).",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "toolchainFile": "${sourceDir}/cmake/aarch64-rpi-toolchain.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TFT_BUILD_TESTS": "OFF"
+      },
+      "vendor": {
+        "microsoft.com/VisualStudioSettings/CMake/1.0": {
+          "intelliSenseMode": "linux-gcc-arm"
+        }
+      }
+    },
+    {
+      "name": "pi4-release",
+      "inherits": "pi4-debug",
+      "displayName": "Raspberry Pi 4 (aarch64) - Cross Release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo"
+      }
+    },
+    {
+      "name": "host-tests",
+      "displayName": "Host - tests only",
+      "description": "Build and run the tests on this machine (Linux or WSL; the Pi itself works too).",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "TFT_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "pi4-debug-remote", "configurePreset": "pi4-debug-remote" },
+    { "name": "pi4-release-remote", "configurePreset": "pi4-release-remote" },
+    { "name": "pi4-debug", "configurePreset": "pi4-debug" },
+    { "name": "pi4-release", "configurePreset": "pi4-release" },
+    { "name": "host-tests", "configurePreset": "host-tests" }
+  ],
+  "testPresets": [
+    {
+      "name": "host-tests",
+      "configurePreset": "host-tests",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}
