@@ -77,9 +77,33 @@ Rotation is set with MADCTL (0x36), always with the BGR bit (`0x08`):
 - Enable SPI: `dtparam=spi=on` in `/boot/firmware/config.txt`, or with `raspi-config`.
 - Don't load the Waveshare `waveshare35a` overlay or LCD-show driver; they
   take over the display.
+- Keep the SPI clock steady: add `core_freq_min=500` to
+  `/boot/firmware/config.txt` and reboot. See below.
 - Run as a user in the `spi` and `gpio` groups, or with `sudo`.
 - Build tools: `sudo apt install cmake ninja-build g++`. No other libraries
   are needed (JPEG/PNG decoding uses the bundled `stb_image`).
+
+### SPI clock and the core clock
+
+The Pi's SPI clock is divided from the GPU core clock: about 15.6 MHz is
+500 MHz / 32. With the default `ondemand` CPU governor the firmware drops the
+core clock to 200 MHz while the CPU is idle, and the SPI clock drops with it to
+6.25 MHz. Full-screen fills and images send one large transfer per row and
+leave the CPU idle, so they hit this, while text (many tiny transfers that
+keep the CPU busy) doesn't.
+
+Measured with `--bench` on a Pi 4 (the Rust version gives the same numbers):
+
+| | Default (`ondemand`) | `core_freq_min=500` or `performance` governor |
+|---|---|---|
+| `fill_screen` | 415 ms | 166 ms |
+| `draw_image` | 413 ms | 166 ms |
+| `draw_text` (800 chars) | 242 ms | 238 ms |
+
+`core_freq_min=500` fixes only the core clock, so the CPU still slows down
+when idle. To try it without rebooting, switch the governor for a while:
+`echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor`
+(and `ondemand` to put it back).
 
 ## Building and running
 
