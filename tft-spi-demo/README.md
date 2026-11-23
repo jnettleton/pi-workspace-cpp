@@ -94,14 +94,17 @@ keep the CPU busy) doesn't.
 
 Measured with `--bench` on a Pi 4 (the Rust version gives the same numbers):
 
-| | Default (`ondemand`) | `core_freq_min=500` or `performance` governor |
-|---|---|---|
-| `fill_screen` | 415 ms | 166 ms |
-| `draw_image` | 413 ms | 166 ms |
-| `draw_text` (800 chars) | 242 ms | 238 ms |
+| | Default (`ondemand`) | `core_freq_min=500` (`ondemand`) | `performance` governor |
+|---|---|---|---|
+| `fill_screen` | 415 ms | 175 ms | 166 ms |
+| `draw_image` | 413 ms | 175 ms | 166 ms |
+| `draw_text` (800 chars) | 242 ms | 240 ms | 238 ms |
 
 `core_freq_min=500` fixes only the core clock, so the CPU still slows down
-when idle. To try it without rebooting, switch the governor for a while:
+when idle. That makes the kernel a little slower to start each row transfer
+(about 25–30 µs each), hence the extra 9 ms per full screen compared with the
+`performance` governor. To try the full speed without rebooting, switch the
+governor for a while:
 `echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor`
 (and `ondemand` to put it back).
 
