@@ -92,22 +92,28 @@ core clock to 200 MHz while the CPU is idle, and the SPI clock drops with it to
 leave the CPU idle, so they hit this, while text (many tiny transfers that
 keep the CPU busy) doesn't.
 
-Measured with `--bench` on a Pi 4, with one transfer per row (before transfers
-were batched; rerun `--bench` for current numbers). The Rust version matches, except that it
-gets 166 ms with `core_freq_min=500` too (see below):
+Measured with `--bench` on a Pi 4, with `core_freq_min=500` and the default
+`ondemand` governor. A full screen of data takes about 157 ms at 15.6 MHz:
 
-| | Default (`ondemand`) | `core_freq_min=500` (`ondemand`) | `performance` governor |
+| | This version | Rust version |
+|---|---|---|
+| `fill_screen` | 163 ms | 161 ms |
+| `draw_image` | 168 ms | 167 ms |
+| `draw_text` (800 chars) | 228 ms | 229 ms |
+
+How it got there (this version, sending one transfer per row at the time):
+
+| | Default (`ondemand`) | `core_freq_min=500` | `performance` governor |
 |---|---|---|---|
 | `fill_screen` | 415 ms | 175 ms | 166 ms |
 | `draw_image` | 413 ms | 175 ms | 166 ms |
 | `draw_text` (800 chars) | 242 ms | 240 ms | 238 ms |
 
 `core_freq_min=500` fixes only the core clock, so the CPU still slows down
-when idle. That makes the kernel a little slower to start each row transfer
-(about 25–30 µs each), hence the extra 9 ms per full screen compared with the
-`performance` governor. The Rust version does a little more CPU work per row,
-which keeps `ondemand` from slowing the CPU down, so it gets the full speed. To
-try the full speed without rebooting, switch the governor for a while:
+when idle, which makes the kernel a little slower to start each transfer.
+With 320 transfers per screen that added 9 ms; sending up to 1365 pixels per
+transfer (113 per screen) took it back to full speed. To try the
+`performance` governor without rebooting:
 `echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor`
 (and `ondemand` to put it back).
 
