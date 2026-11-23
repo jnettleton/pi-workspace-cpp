@@ -59,7 +59,7 @@ the Pi 5's RP1 GPIO is different.
 | Touch SPI clock | 2 MHz (XPT2046 maximum is about 2.5 MHz) |
 | SPI mode | Mode 0 |
 | Pixel format (0x3A) | `0x55`: 16 bits per pixel (`0x66`, 18 bits, with `TFT_BUS=8`) |
-| Transfers | Whole 16-bit words only. One row of pixels per SPI transfer (at most 480 × 2 = 960 bytes) |
+| Transfers | Whole 16-bit words only. Up to 1365 pixels per SPI transfer (2730 bytes as RGB565), running across rows; a full screen is 113 transfers. spidev allows 4096 bytes per transfer by default |
 | Gamma | The panel's defaults. `TFT_GAMMA=full` or `analog` sends tft-spi-demo's tables instead |
 | Touch commands | `0xD0` read X, `0x90` read Y (12-bit, differential) |
 
@@ -88,12 +88,13 @@ Rotation is set with MADCTL (0x36), always with the BGR bit (`0x08`):
 The Pi's SPI clock is divided from the GPU core clock: about 15.6 MHz is
 500 MHz / 32. With the default `ondemand` CPU governor the firmware drops the
 core clock to 200 MHz while the CPU is idle, and the SPI clock drops with it to
-6.25 MHz. Full-screen fills and images send one large transfer per row and
+6.25 MHz. Full-screen fills and images send a few large transfers and
 leave the CPU idle, so they hit this, while text (many tiny transfers that
 keep the CPU busy) doesn't.
 
-Measured with `--bench` on a Pi 4 (the Rust version matches, except that it
-gets 166 ms with `core_freq_min=500` too; see below):
+Measured with `--bench` on a Pi 4, with one transfer per row (before transfers
+were batched; rerun `--bench` for current numbers). The Rust version matches, except that it
+gets 166 ms with `core_freq_min=500` too (see below):
 
 | | Default (`ondemand`) | `core_freq_min=500` (`ondemand`) | `performance` governor |
 |---|---|---|---|
@@ -156,7 +157,7 @@ ctest --preset host-tests                       # or run out/build/host-tests/bi
 out/build/host-tests/bin/tft_tests calibrate    # only tests whose names contain "calibrate"
 ```
 
-85 tests, about 1.5 s in a Release build. They use a tiny built-in framework
+87 tests, about 1.5 s in a Release build. They use a tiny built-in framework
 (`tests/check.hpp`), so nothing is downloaded. What a test prints is only
 shown if it fails.
 
@@ -167,7 +168,7 @@ logs every command, so tests can check exactly what would be on screen.
 
 | Area | Tests |
 |---|---|
-| `fill_rectangle`, `draw_text`, `draw_image` | Every pixel on screen, clipping at all edges, nothing sent when off screen, one transfer per row, UTF-8 text |
+| `fill_rectangle`, `draw_text`, `draw_image` | Every pixel on screen, clipping at all edges, nothing sent when off screen, transfers as full as possible (1365 pixels, across rows), one transfer per character, UTF-8 text |
 | Lines, circles, rectangles, rounded rectangles | Pixel-for-pixel against plain per-pixel versions of the algorithms; clipped at every edge; no overflow at extreme coordinates |
 | Rotations | MADCTL values verified on the hardware are pinned; each rotation covers the whole panel once; the four are consistent quarter turns with no mirroring |
 | Initialization | The known-working command sequence, gamma options, 18-bit pixel format, reset and ILI9486 timing |

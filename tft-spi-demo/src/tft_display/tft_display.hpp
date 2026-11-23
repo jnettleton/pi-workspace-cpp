@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <optional>
@@ -40,6 +41,14 @@ public:
     /// Native (portrait) panel size of the ILI9486
     static constexpr std::uint16_t NATIVE_WIDTH = 320;
     static constexpr std::uint16_t NATIVE_HEIGHT = 480;
+
+    /// Most pixels per `write_data` call. spidev takes at most 4096 bytes per
+    /// transfer by default, and 1365 pixels are 4095 bytes in 18-bit form
+    /// (what the 8-bit bus sends; the 16-bit bus turns them into 2730 bytes of
+    /// RGB565). Transfers needn't end at a row: the panel fills the address
+    /// window continuously. Fewer, larger transfers matter on the Pi, because
+    /// each one takes some time to start, more so when the CPU has slowed down.
+    static constexpr std::size_t MAX_TRANSFER_PIXELS = 1365;
 
     explicit TftDisplay(TftSpi& spi);
 

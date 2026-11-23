@@ -80,6 +80,19 @@ std::size_t check_frame(const MockSpi& p, const std::function<Rgb666(std::size_t
     return p.pixels_written;
 }
 
+/// Checks `total` pixels were sent in as few transfers as possible: every
+/// transfer holds MAX_TRANSFER_PIXELS except the last, which holds the rest.
+void check_full_transfers(const MockSpi& spi, std::size_t total) {
+    constexpr std::size_t max = TftDisplay::MAX_TRANSFER_PIXELS;
+    const std::size_t count = (total + max - 1) / max;
+    const auto& transfers = spi.pixel_transfers;
+    CHECK_EQ(transfers.size(), count, "transfers for ", total, " pixels");
+    for (std::size_t i = 0; i + 1 < transfers.size(); ++i) {
+        CHECK_EQ(transfers[i], max * 3, "transfer ", i);
+    }
+    CHECK_EQ(transfers.back(), (total - (count - 1) * max) * 3, "last transfer");
+}
+
 /// Whether (x, y) is inside the w x h rectangle at (rx, ry).
 bool inside(std::size_t x, std::size_t y, std::size_t rx, std::size_t ry, std::size_t w, std::size_t h) {
     return x >= rx && x < rx + w && y >= ry && y < ry + h;
@@ -130,10 +143,18 @@ TEST(full_screen_image_transfers) {
     s.display.draw_image(0, 0, 480, 320, rgb);
     check_placement(s.spi, rgb, 480, 320, 0, 0);
 
-    // One 1440-byte transfer per row, like tft-spi-demo
-    CHECK_EQ(s.spi.pixel_transfers.size(), 320u);
-    CHECK(std::all_of(s.spi.pixel_transfers.begin(), s.spi.pixel_transfers.end(),
-                      [](std::size_t n) { return n == 480 * 3; }));
+    // 113 transfers of up to 1365 pixels, not one per row
+    check_full_transfers(s.spi, 480 * 320);
+}
+
+/// A clipped image still goes out in full transfers, which run across rows.
+TEST(clipped_image_transfers_span_rows) {
+    const auto rgb = gradient(300, 200);
+    Landscape s;
+    s.display.draw_image(-50, 250, 300, 200, rgb);
+    // 250 x 70 visible
+    check_placement(s.spi, rgb, 300, 200, -50, 250);
+    check_full_transfers(s.spi, 250 * 70);
 }
 
 // ---- fill_rectangle ----
@@ -177,11 +198,23 @@ TEST(fill_screen_in_each_rotation) {
         const Rgb666 blue = Color::BLUE.to_rgb666_bytes();
         CHECK_EQ(check_frame(s.spi, [&](auto, auto) { return blue; }), w * h, rotation);
 
-        // One transfer per row, like draw_image
-        CHECK_EQ(s.spi.pixel_transfers.size(), h, rotation);
-        CHECK(std::all_of(s.spi.pixel_transfers.begin(), s.spi.pixel_transfers.end(),
-                          [&](std::size_t n) { return n == w * 3; }),
-              rotation);
+        // Full transfers, like draw_image
+        check_full_transfers(s.spi, w * h);
+    }
+}
+
+/// Each character cell goes out in one transfer, not one per row.
+TEST(draw_text_sends_one_transfer_per_character) {
+    {
+        Landscape s;
+        s.display.draw_text(0, 0, "Hi!", Color::WHITE, Color::BLUE, 2);
+        CHECK_EQ(s.spi.pixel_transfers, (std::vector<std::size_t>(3, 12 * 16 * 3)));
+    }
+    {
+        // A character too big for one transfer: size 10 is 60 x 80 = 4800 pixels
+        Landscape s;
+        s.display.draw_text(0, 0, "W", Color::WHITE, Color::BLUE, 10);
+        check_full_transfers(s.spi, 60 * 80);
     }
 }
 

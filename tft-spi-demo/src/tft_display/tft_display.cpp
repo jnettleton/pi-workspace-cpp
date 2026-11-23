@@ -12,10 +12,6 @@
 #include "util/strings.hpp"
 #include "util/utf8.hpp"
 
-// Pixels are sent one row per `write_data` call (at most 480 * 3 = 1440
-// bytes, 960 once the Pi's 16-bit bus turns them into RGB565), well under
-// spidev's 4096-byte limit.
-
 namespace tft {
 
 namespace {
@@ -24,6 +20,7 @@ using namespace std::chrono_literals;
 
 /// Bytes per pixel in 18-bit mode
 constexpr std::size_t BYTES_PER_PIXEL = 3;
+constexpr std::size_t MAX_TRANSFER_BYTES = TftDisplay::MAX_TRANSFER_PIXELS * BYTES_PER_PIXEL;
 
 std::uint16_t saturating_add(std::uint16_t a, std::uint32_t b) {
     return static_cast<std::uint16_t>(std::min<std::uint32_t>(a + b, 0xFFFF));
@@ -133,15 +130,18 @@ void TftDisplay::fill_rectangle(std::uint16_t x, std::uint16_t y, std::uint16_t 
     set_addr_window(x, y, x + w - 1, y + h - 1);
     spi_.write_command(Command::MemoryWrite);
 
-    // One row of the color, sent once per row
+    // One transfer's worth of the color, sent as many times as needed
+    const std::size_t total = std::size_t{w} * h;
     const Rgb666 px = color.to_rgb666_bytes();
-    std::vector<std::uint8_t> row;
-    row.reserve(std::size_t{w} * BYTES_PER_PIXEL);
-    for (std::uint16_t i = 0; i < w; ++i) {
-        row.insert(row.end(), px.begin(), px.end());
+    std::vector<std::uint8_t> chunk;
+    chunk.reserve(std::min(total, MAX_TRANSFER_PIXELS) * BYTES_PER_PIXEL);
+    for (std::size_t i = 0; i < std::min(total, MAX_TRANSFER_PIXELS); ++i) {
+        chunk.insert(chunk.end(), px.begin(), px.end());
     }
-    for (std::uint16_t i = 0; i < h; ++i) {
-        spi_.write_data(row);
+    for (std::size_t left = total; left > 0;) {
+        const std::size_t n = std::min(left, MAX_TRANSFER_PIXELS);
+        spi_.write_data(std::span<const std::uint8_t>(chunk).first(n * BYTES_PER_PIXEL));
+        left -= n;
     }
 }
 
@@ -189,13 +189,23 @@ void TftDisplay::draw_image(std::int32_t x, std::int32_t y, std::uint16_t width,
     const std::size_t visible_bytes = std::size_t(x1 - x0) * 3;
     const std::size_t row_bytes = std::size_t{width} * 3;
 
-    // One transfer per visible row
-    std::vector<std::uint8_t> buffer(visible_bytes);
+    // The visible rows one after another, in transfers of up to
+    // MAX_TRANSFER_PIXELS (which may end mid-row)
+    std::vector<std::uint8_t> buffer;
+    buffer.reserve(MAX_TRANSFER_BYTES);
     for (std::size_t row = 0; row < std::size_t(y1 - y0); ++row) {
         const std::size_t start = (src_y + row) * row_bytes + src_x * 3;
-        for (std::size_t i = 0; i < visible_bytes; ++i) {
-            buffer[i] = rgb[start + i] & 0xFC;  // same as Color::to_rgb666_bytes
+        for (std::size_t i = 0; i < visible_bytes; i += BYTES_PER_PIXEL) {
+            for (std::size_t c = 0; c < BYTES_PER_PIXEL; ++c) {
+                buffer.push_back(rgb[start + i + c] & 0xFC);  // same as Color::to_rgb666_bytes
+            }
+            if (buffer.size() == MAX_TRANSFER_BYTES) {
+                spi_.write_data(buffer);
+                buffer.clear();
+            }
         }
+    }
+    if (!buffer.empty()) {
         spi_.write_data(buffer);
     }
 }
@@ -279,9 +289,10 @@ void TftDisplay::draw_char(std::uint16_t x, std::uint16_t y, char32_t c, Color f
 
     set_addr_window(x, y, x + w - 1, y + h - 1);
     spi_.write_command(Command::MemoryWrite);
-    const std::size_t row_bytes = std::size_t{w} * BYTES_PER_PIXEL;
-    for (std::size_t offset = 0; offset < buffer.size(); offset += row_bytes) {
-        spi_.write_data(std::span<const std::uint8_t>(buffer).subspan(offset, row_bytes));
+    // Usually the whole cell in one transfer
+    for (std::size_t offset = 0; offset < buffer.size(); offset += MAX_TRANSFER_BYTES) {
+        spi_.write_data(std::span<const std::uint8_t>(buffer).subspan(
+            offset, std::min(MAX_TRANSFER_BYTES, buffer.size() - offset)));
     }
 }
 
