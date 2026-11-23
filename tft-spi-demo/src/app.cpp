@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
@@ -10,6 +11,7 @@
 #include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
 #include "calibrate.hpp"
 #include "picture.hpp"
@@ -58,6 +60,66 @@ void color_test(TftDisplay& display) {
         const auto y = static_cast<std::uint16_t>(i * band_h + band_h / 2 - 4);
         display.draw_text(4, y, bands[i].first, Color::WHITE, Color::BLACK, 1);
     }
+}
+
+/// Runs per benchmark in `--bench`
+constexpr std::size_t BENCH_RUNS = 10;
+
+/// Times `BENCH_RUNS` calls of `f` (given the run number), in milliseconds.
+template <class F>
+std::vector<double> time_runs(F&& f) {
+    std::vector<double> times;
+    for (std::size_t i = 0; i < BENCH_RUNS; ++i) {
+        const auto start = std::chrono::steady_clock::now();
+        f(i);
+        times.push_back(std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count());
+    }
+    return times;
+}
+
+void report(const std::string& name, const std::vector<double>& ms) {
+    const double min = *std::min_element(ms.begin(), ms.end());
+    const double max = *std::max_element(ms.begin(), ms.end());
+    double sum = 0;
+    for (const double t : ms) sum += t;
+    std::printf("  %-24s min %7.1f ms  avg %7.1f ms  max %7.1f ms\n", name.c_str(), min, sum / ms.size(), max);
+    std::fflush(stdout);
+}
+
+/// `--bench`: times full-screen fills, a full-screen image and a screen of
+/// text in landscape, `BENCH_RUNS` times each, and prints min/avg/max per run.
+/// The Rust version prints the same lines, so the two can be compared directly.
+void bench(TftDisplay& display) {
+    display.set_rotation(Rotate::Degrees90);
+    const std::uint16_t w = display.width(), h = display.height();
+    std::cout << "bench: " << w << 'x' << h << ", " << BENCH_RUNS << " runs each" << std::endl;
+
+    // Full-screen fills, a different color each time
+    const std::array<Color, 5> colors{Color::RED, Color::GREEN, Color::BLUE, Color::WHITE, Color::BLACK};
+    report("fill_screen", time_runs([&](std::size_t i) { display.fill_screen(colors[i % colors.size()]); }));
+
+    // A full-screen gradient image
+    std::vector<std::uint8_t> rgb;
+    rgb.reserve(std::size_t{w} * h * 3);
+    for (std::size_t y = 0; y < h; ++y) {
+        for (std::size_t x = 0; x < w; ++x) {
+            rgb.push_back(std::uint8_t(x * 255 / (w - 1)));
+            rgb.push_back(std::uint8_t(y * 255 / (h - 1)));
+            rgb.push_back(128);
+        }
+    }
+    report("draw_image", time_runs([&](std::size_t) { display.draw_image(0, 0, w, h, rgb); }));
+
+    // A screen of size-2 text: one address window and transfer set per character
+    const std::string line = "The quick brown fox jumps over the lazy ";
+    const std::size_t rows = h / 16;
+    std::string text;
+    for (std::size_t r = 0; r < rows; ++r) text += (r ? "\n" : "") + line;
+    report("draw_text (" + std::to_string(line.size() * rows) + " chars)", time_runs([&](std::size_t i) {
+               const bool even = i % 2 == 0;
+               display.draw_text(0, 0, text, even ? Color::WHITE : Color::YELLOW, even ? Color::BLUE : Color::BLACK,
+                                 2);
+           }));
 }
 
 /// Lines and circles, including some that run off the screen edges.
@@ -162,6 +224,11 @@ void run(const std::vector<std::string>& args) {
     std::cout << "gamma: " << to_string(gamma) << " (set TFT_GAMMA=full, analog or none to change)\n";
     display.set_gamma(gamma);
     display.initialize();
+
+    if (has_flag("--bench")) {
+        bench(display);
+        return;
+    }
 
     if (has_flag("--colors")) {
         color_test(display);

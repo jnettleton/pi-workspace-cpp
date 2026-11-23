@@ -96,7 +96,12 @@ cd out/build/pi4-native/bin
 ./tft_spi_demo photo.jpg            # show a picture (fit, with borders)
 ./tft_spi_demo --fill photo.jpg     # show a picture filling the screen
 ./tft_spi_demo --colors             # color gradients, to judge the gamma
+./tft_spi_demo --bench              # time full-screen drawing (10 runs each) and exit
 ```
+
+`--bench` prints min/avg/max times for a full-screen fill, a full-screen
+image and a screen of size-2 text. The Rust version prints the same lines, so
+the two can be compared run for run.
 
 The touch calibration is saved to `touch_calibration.txt` in the current
 directory. Ctrl-C quits the demo.

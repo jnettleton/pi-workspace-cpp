@@ -6,6 +6,7 @@
 //   tft_spi_demo [--calibrate]      demo: shapes, text, touch drawing
 //   tft_spi_demo [--fill] <image>   show a JPEG or PNG and exit
 //   tft_spi_demo --colors           color gradients and exit
+//   tft_spi_demo --bench            time full-screen drawing and exit
 //
 // The display, shape, font, color and picture code builds on any platform so
 // the tests run on a PC; only the Pi hardware parts need Linux.

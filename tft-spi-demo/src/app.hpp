@@ -12,6 +12,7 @@ namespace app {
 ///   tft_spi_demo [--calibrate]      demo: shapes, text, touch drawing
 ///   tft_spi_demo [--fill] <image>   show a JPEG or PNG and exit
 ///   tft_spi_demo --colors           color gradients and exit
+///   tft_spi_demo --bench            time full-screen drawing and exit
 ///
 /// `TFT_GAMMA=full|analog|none` picks the gamma tables sent at startup.
 /// Throws on errors.
