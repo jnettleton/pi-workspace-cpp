@@ -83,13 +83,13 @@ Rotation is set with MADCTL (0x36), always with the BGR bit (`0x08`):
 
 ## Building and running
 
-On the Pi (or from Visual Studio with the `pi4-debug-remote` /
-`pi4-release-remote` presets, which copy the sources over SSH and build there):
+On the Pi itself, with the `pi4-native` preset:
 
 ```
-cmake --preset pi4-release-remote
-cmake --build --preset pi4-release-remote
-cd out/build/pi4-release-remote/bin
+cmake --preset pi4-native
+cmake --build --preset pi4-native
+ctest --preset pi4-native           # run the tests
+cd out/build/pi4-native/bin
 
 ./tft_spi_demo                      # demo: rotations, shapes, text, touch drawing
 ./tft_spi_demo --calibrate          # redo the touch calibration first
@@ -100,6 +100,9 @@ cd out/build/pi4-release-remote/bin
 
 The touch calibration is saved to `touch_calibration.txt` in the current
 directory. Ctrl-C quits the demo.
+
+From Visual Studio on Windows, use `pi4-debug-remote` / `pi4-release-remote`:
+they copy the sources to the Pi over SSH and build there.
 
 `pi4-debug` / `pi4-release` cross-compile from Windows with
 `cmake/aarch64-rpi-toolchain.cmake` (set `RPI_TOOLCHAIN_ROOT` and
