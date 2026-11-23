@@ -188,31 +188,35 @@ void run(const std::vector<std::string>& args) {
 
     // Drag to draw; tap a button to highlight it. Ctrl-C to quit.
     std::cout << "touch the screen (Ctrl-C to quit)..." << std::endl;
-    std::optional<std::pair<std::int32_t, std::int32_t>> last_point;
+    // Where the current stroke last reached. A flag plus a point rather than a
+    // std::optional, which trips a false -Wmaybe-uninitialized in g++ 12.
+    bool in_stroke = false;
+    std::int32_t last_x = 0, last_y = 0;
     for (;;) {
         const auto raw = touch.read_filtered(rpi::TftTouch::FILTER_SAMPLES);
         if (!raw) {
-            last_point.reset();  // finger lifted: next touch starts a new stroke
+            in_stroke = false;  // finger lifted: next touch starts a new stroke
             std::this_thread::sleep_for(10ms);
             continue;
         }
         const auto [x, y] = calibration.to_screen(*raw, display.width(), display.height());
 
         if (const auto index = ui::button_at(x, y, display.height())) {
-            last_point.reset();
+            in_stroke = false;
             std::cout << "touch (" << x << ", " << y << "): button " << ui::BUTTONS[*index].label << std::endl;
             ui::draw_button(display, *index, true);
             touch.wait_for_release();
             ui::draw_button(display, *index, false);
         } else {
             std::cout << "touch (" << x << ", " << y << ") raw " << *raw << std::endl;
-            const std::pair<std::int32_t, std::int32_t> point{x, y};
-            if (last_point) {
-                display.draw_line(last_point->first, last_point->second, point.first, point.second, Color::WHITE);
+            if (in_stroke) {
+                display.draw_line(last_x, last_y, x, y, Color::WHITE);
             } else {
-                display.fill_circle(point.first, point.second, 1, Color::WHITE);
+                display.fill_circle(x, y, 1, Color::WHITE);
             }
-            last_point = point;
+            in_stroke = true;
+            last_x = x;
+            last_y = y;
         }
     }
 }
